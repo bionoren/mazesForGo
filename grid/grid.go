@@ -74,16 +74,16 @@ func (g Grid) CellForIndex(idx int) Cell {
 
 // CellDir returns the direction from a to b
 func (g Grid) CellDir(a, b Cell) Direction {
-	if a.Row() < b.Row() {
-		return SOUTH
-	} else if a.Row() > b.Row() {
+	if a.col == b.col {
+		if a.Row() < b.Row() {
+			return SOUTH
+		}
 		return NORTH
 	}
 	if a.Col() < b.Col() {
 		return EAST
-	} else {
-		return WEST
 	}
+	return WEST
 }
 
 func (g Grid) String() string {
@@ -148,4 +148,38 @@ func (g Grid) Draw(window pixel.Target, size pixel.Rect, thickness float64) {
 	}
 
 	target.Draw(window)
+}
+
+type MazeStats struct {
+	DeadEnds int
+	FourWay int
+	Corridors int
+}
+
+func (g Grid) Statistics() MazeStats {
+	var stats MazeStats
+
+	for r := 0; r < g.Rows(); r++ {
+		for c := 0; c < g.Rows(); c++ {
+			cell := g.Cell(r, c)
+
+			var openings int
+			for d := NORTH; d <= WEST; d++ {
+				if cell.Connected(d) {
+					openings++
+				}
+			}
+			if openings == 1 {
+				stats.DeadEnds++
+			}
+			if openings == 2 {
+				stats.Corridors++
+			}
+			if openings == 4 {
+				stats.FourWay++
+			}
+		}
+	}
+
+	return stats
 }

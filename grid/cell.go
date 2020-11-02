@@ -28,7 +28,7 @@ type Cell struct {
 	index     int
 	row, col  int
 	neighbors [WEST + 1]*Cell
-	openings  [4]bool
+	openings  [WEST + 1]bool
 }
 
 func (c Cell) Index() int {

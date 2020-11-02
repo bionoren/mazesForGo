@@ -1,6 +1,8 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"github.com/bionoren/mazes/algorithms"
 	"github.com/bionoren/mazes/grid"
 	"github.com/faiface/pixel"
@@ -10,7 +12,12 @@ import (
 	"golang.org/x/image/font/basicfont"
 	"image/color"
 	"math"
+	"os"
+	"path/filepath"
+	"reflect"
+	"runtime"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -26,8 +33,6 @@ type menuSettings struct {
 }
 
 func (s *menuSettings) GridReset() {
-	s.showDijkstra = false
-	s.start = nil
 	s.end = nil
 	s.solve = false
 }
@@ -109,6 +114,20 @@ func run() {
 			regrid = true
 			repaint = true
 		}
+		if win.JustPressed(pixelgl.Key6) {
+			algorithm = algorithms.HuntAndKill
+			settings.algorithm = 6
+
+			regrid = true
+			repaint = true
+		}
+		if win.JustPressed(pixelgl.Key7) {
+			algorithm = algorithms.RecursiveBacktracker
+			settings.algorithm = 7
+
+			regrid = true
+			repaint = true
+		}
 
 		if win.JustPressed(pixelgl.KeyN) {
 			regrid = true
@@ -144,6 +163,11 @@ func run() {
 			algorithm(g)
 			dj = algorithms.NewDijkstra(g)
 			settings.GridReset()
+			if settings.showDijkstra && settings.start != nil {
+				cell := g.Cell(settings.start.Row(), settings.start.Col())
+				settings.start = &cell
+				dj.Init(*settings.start)
+			}
 
 			regrid = false
 		}
@@ -294,6 +318,18 @@ func DrawMenu(target pixel.Target, bounds pixel.Rect, settings menuSettings) {
 		labelWriter.Color = color.White
 	}
 	labelWriter.WriteString("5 - Aldous-Broder-Wilson's\n")
+	if settings.algorithm == 6 {
+		labelWriter.Color = green
+	} else {
+		labelWriter.Color = color.White
+	}
+	labelWriter.WriteString("6 - Hunt and Kill\n")
+	if settings.algorithm == 7 {
+		labelWriter.Color = green
+	} else {
+		labelWriter.Color = color.White
+	}
+	labelWriter.WriteString("7 - Recursive Backtracker\n")
 	labelWriter.Color = color.White
 	labelWriter.WriteRune('\n')
 	labelWriter.WriteString("commands:\n")
@@ -323,5 +359,60 @@ func DrawMenu(target pixel.Target, bounds pixel.Rect, settings menuSettings) {
 const thickness = 5
 
 func main() {
+	set := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	var (
+		stats bool
+	)
+	set.BoolVar(&stats, "stats", false, "Print maze algorithm statistics")
+
+	if len(os.Args) > 1 {
+		_ = set.Parse(os.Args[1:])
+
+		if stats {
+			algos := []func(g grid.Grid){
+				algorithms.BinarySearch,
+				algorithms.Sidewinder,
+				algorithms.AldousBroder,
+				algorithms.Wilsons,
+				algorithms.AldousBroderWilsons,
+				algorithms.HuntAndKill,
+				algorithms.RecursiveBacktracker,
+			}
+			names := make([]string, len(algos))
+			var longestName int
+			for i, algo := range algos {
+				name := filepath.Base(runtime.FuncForPC(reflect.ValueOf(algo).Pointer()).Name())
+				names[i] = name[len("algorithms."):]
+				if len(names[i]) > longestName {
+					longestName = len(names[i])
+				}
+			}
+
+			iterations := 30
+			rows := 20
+			cols := 20
+			size := rows * cols
+			fmt.Printf("average over %d runs\n", iterations)
+			fmt.Println(strings.Repeat(" ", longestName)+" ends | 4way | corridors")
+			for i, algo := range algos {
+				var stats grid.MazeStats
+				for count := 0; count < iterations; count++ {
+					g := grid.New(rows, cols)
+					algo(g)
+					s := g.Statistics()
+					stats.DeadEnds += s.DeadEnds
+					stats.Corridors += s.Corridors
+					stats.FourWay += s.FourWay
+				}
+
+				deadEndPercent := math.Round(float64(stats.DeadEnds) / float64(size*iterations) * 100)
+				corridorPercent := math.Round(float64(stats.Corridors) / float64(size*iterations) * 100)
+				fourWayPercent := float64(stats.FourWay) / float64(size*iterations) * 100
+				fmt.Printf("%"+strconv.FormatInt(int64(longestName), 10)+"s: %2d%% | %.1f%% | %d%%\n", names[i], int(deadEndPercent), fourWayPercent, int(corridorPercent))
+			}
+			os.Exit(0)
+		}
+	}
+
 	pixelgl.Run(run)
 }

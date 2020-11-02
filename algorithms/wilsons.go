@@ -10,7 +10,10 @@ func Wilsons(g grid.Grid) {
 	node := g.CellForIndex(rand.Intn(size))
 	visited := make([]bool, size)
 	pathed := make([]bool, size)
-	options := make([]int, 0, size)
+	options := make([]int, size)
+	for i := 0; i < size; i++ {
+		options[i] = i
+	}
 	visited[node.Index()] = true
 
 	path := make([]grid.Cell, 0, size/2) // on large grids, size/2 is a reasonable initial memory guess
@@ -26,12 +29,13 @@ func Wilsons(g grid.Grid) {
 					next = path[i]
 					visited[next.Index()] = true
 				}
-				options = options[:0]
-				for i, v := range visited {
-					if !v {
-						options = append(options, i)
+				filteredOpts := options[:0]
+				for _, idx := range options {
+					if !visited[idx] {
+						filteredOpts = append(filteredOpts, idx)
 					}
 				}
+				options = filteredOpts
 
 				if len(options) == 0 {
 					break

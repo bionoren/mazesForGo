@@ -55,12 +55,14 @@ func AldousBroderWilsons(g grid.Grid) {
 					next = path[i]
 					visited[next.Index()] = true
 				}
-				options = options[:0]
-				for i, v := range visited {
-					if !v {
-						options = append(options, i)
+
+				filteredOpts := options[:0]
+				for _, idx := range options {
+					if !visited[idx] {
+						filteredOpts = append(filteredOpts, idx)
 					}
 				}
+				options = filteredOpts
 
 				if len(options) == 0 {
 					break
